@@ -3322,7 +3322,7 @@ const miscTest = (
       const mint = anchor.web3.Keypair.generate();
       const token = anchor.web3.Keypair.generate();
 
-      await program.rpc.testInitMint({
+      await program.rpc.testInitTokenAccountWithMintWrongOrder({
         accounts: {
           payer: provider.wallet.publicKey,
           token: token.publicKey,
