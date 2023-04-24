@@ -3318,7 +3318,7 @@ const miscTest = (
       });
     });
 
-    it("Init constraint orderering", async () => {
+    it("Init constraint ordering", async () => {
       const mint = anchor.web3.Keypair.generate();
       const token = anchor.web3.Keypair.generate();
 

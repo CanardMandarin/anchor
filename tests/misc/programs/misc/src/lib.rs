@@ -404,7 +404,9 @@ pub mod misc {
         Ok(())
     }
 
-    pub fn test_init_token_account_with_mint_wrong_order(_ctx: Context<TestInitTokenAccountWithMintWrongOrder>) -> Result<()> {
+    pub fn test_init_token_account_with_mint_wrong_order(
+        _ctx: Context<TestInitTokenAccountWithMintWrongOrder>,
+    ) -> Result<()> {
         Ok(())
     }
 }
