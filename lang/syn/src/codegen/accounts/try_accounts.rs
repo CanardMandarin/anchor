@@ -1,5 +1,5 @@
 use crate::codegen::accounts::{constraints, generics, ParsedGenerics};
-use crate::{AccountField, AccountsStruct};
+use crate::{AccountField, AccountsStruct, Field};
 use quote::quote;
 use syn::Expr;
 
