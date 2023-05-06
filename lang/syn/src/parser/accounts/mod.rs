@@ -162,7 +162,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     ));
                 }
             }
-            match &field.constraints.init.as_ref().unwrap().kind {
+            match kind {
                 // This doesn't catch cases like account.key() or account.key.
                 // My guess is that doesn't happen often and we can revisit
                 // this if I'm wrong.
@@ -191,7 +191,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                     }) {
                         return Err(ParseError::new(
                             field.ident.span(),
-                            "because of the init constaint, the mint has to be declared before any corresponding token account",
+                            "because of the init constraint, the mint has to be declared before any corresponding token account",
                         ));
                     }
                 }
