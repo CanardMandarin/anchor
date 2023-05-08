@@ -178,7 +178,7 @@ fn constraints_cross_checks(fields: &[AccountField]) -> ParseResult<()> {
                         ));
                     }
                 }
-
+                
                 // Make sure initialiazed token accounts are always declared after their corresponding mint.
                 InitKind::Mint { .. } => {
                     if init_fields.iter().enumerate().any(|(f_pos, f)| {
