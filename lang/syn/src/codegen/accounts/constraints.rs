@@ -792,7 +792,7 @@ fn generate_constraint_init_group(
                 // Define the bump variable.
                 #find_pda
 
-                let #field = ({||
+                let #field = (||{
                     // Checks that all the required accounts for this operation are present.
                     #optional_checks
 
