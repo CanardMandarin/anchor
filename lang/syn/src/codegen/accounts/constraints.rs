@@ -577,7 +577,7 @@ fn generate_constraint_init_group(
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintTokenTokenProgram).with_account_name(#name_str).with_pubkeys((*owner_program, #token_program.key())));
                         }
                     }
-                    Ok(pa)?
+                    Ok(pa)
                 })()?;
             }
         }
@@ -739,7 +739,7 @@ fn generate_constraint_init_group(
                             return Err(anchor_lang::error::Error::from(anchor_lang::error::ErrorCode::ConstraintMintTokenProgram).with_account_name(#name_str).with_pubkeys((*owner_program, #token_program.key())));
                         }
                     }
-                    Ok(pa)?
+                    Ok(pa)
                 })()?;
             }
         }
@@ -837,7 +837,7 @@ fn generate_constraint_init_group(
                     }
 
                     // Done.
-                    Ok(pa)?
+                    Ok(pa)
                 })()?;
             }
         }
