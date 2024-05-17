@@ -77,7 +77,11 @@
       "args": [
         {
           "name": "value",
-          "type": "u32"
+          "type": {
+            "defined": {
+              "name": "MyUpdate"
+            }
+          }
         }
       ]
     },
@@ -175,6 +179,29 @@
           {
             "name": "value",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MyUpdate",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Hello",
+            "fields": [
+              {
+                "name": "hello",
+                "type": "u32"
+              }
+            ]
+          },
+          {
+            "name": "Bye",
+            "fields": [
+              "u32"
+            ]
           }
         ]
       }

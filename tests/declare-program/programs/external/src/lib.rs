@@ -2,6 +2,12 @@ use anchor_lang::prelude::*;
 
 declare_id!("Externa111111111111111111111111111111111111");
 
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub enum MyUpdate {
+    Hello { hello: u32 },
+    Bye(u32)
+}
+
 #[program]
 pub mod external {
     use super::*;
@@ -10,8 +16,12 @@ pub mod external {
         Ok(())
     }
 
-    pub fn update(ctx: Context<Update>, value: u32) -> Result<()> {
-        ctx.accounts.my_account.field = value;
+    pub fn update(ctx: Context<Update>, value: MyUpdate) -> Result<()> {
+        ctx.accounts.my_account.field = match value {
+            MyUpdate::Hello { hello } => hello,
+            MyUpdate::Bye(v) => v
+        };
+
         Ok(())
     }
 
