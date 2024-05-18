@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use bytemuck::Zeroable;
+use bytemuck::Pod;
 
 declare_id!("Externa111111111111111111111111111111111111");
 
@@ -10,13 +12,15 @@ pub mod external {
         Ok(())
     }
 
-    pub fn update(ctx: Context<Update>, value: u32) -> Result<()> {
-        ctx.accounts.my_account.field = value;
+    pub fn update(ctx: Context<Update>, value: u64) -> Result<()> {
+        let mut my_account = ctx.accounts.my_account.load_mut()?;
+        my_account.field = value;
         Ok(())
     }
 
-    pub fn update_composite(ctx: Context<UpdateComposite>, value: u32) -> Result<()> {
-        ctx.accounts.update.my_account.field = value;
+    pub fn update_composite(ctx: Context<UpdateComposite>, value: u64) -> Result<()> {
+        let mut my_account = ctx.accounts.update.my_account.load_mut()?;
+        my_account.field = value;
         Ok(())
     }
 }
@@ -32,7 +36,8 @@ pub struct Init<'info> {
         seeds = [authority.key.as_ref()],
         bump
     )]
-    pub my_account: Account<'info, MyAccount>,
+    pub my_account: AccountLoader<'info, MyAccount>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -40,7 +45,7 @@ pub struct Init<'info> {
 pub struct Update<'info> {
     pub authority: Signer<'info>,
     #[account(mut, seeds = [authority.key.as_ref()], bump)]
-    pub my_account: Account<'info, MyAccount>,
+    pub my_account: AccountLoader<'info, MyAccount>,
 }
 
 #[derive(Accounts)]
@@ -48,9 +53,19 @@ pub struct UpdateComposite<'info> {
     pub update: Update<'info>,
 }
 
-#[account]
+#[derive(Copy, Clone, AnchorSerialize, AnchorDeserialize)]
+#[repr(C)]
+pub struct MyStruct {
+    pub my_value: u64,
+}
+
+unsafe impl Pod for MyStruct {}
+unsafe impl Zeroable for MyStruct {}
+
+#[account(zero_copy)]
 pub struct MyAccount {
-    pub field: u32,
+    pub field: u64,
+    pub my_struct: MyStruct
 }
 
 #[event]
