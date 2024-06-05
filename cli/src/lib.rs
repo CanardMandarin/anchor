@@ -275,6 +275,9 @@ pub enum Command {
         program_id: Pubkey,
         /// Filepath to the new program binary.
         program_filepath: String,
+        /// Arguments to pass to the underlying `solana program deploy` command.
+        #[clap(required = false, last = true)]
+        solana_args: Vec<String>,
     },
     #[cfg(feature = "dev")]
     /// Runs an airdrop loop, continuously funding the configured wallet.
@@ -781,7 +784,13 @@ fn process_command(opts: Opts) -> Result<()> {
         Command::Upgrade {
             program_id,
             program_filepath,
-        } => upgrade(&opts.cfg_override, program_id, program_filepath),
+            solana_args,
+        } => upgrade(
+            &opts.cfg_override,
+            program_id,
+            program_filepath,
+            solana_args,
+        ),
         Command::Idl { subcmd } => idl(&opts.cfg_override, subcmd),
         Command::Migrate => migrate(&opts.cfg_override),
         Command::Test {
@@ -2331,8 +2340,11 @@ fn idl_set_buffer(
             let instructions = prepend_compute_unit_ix(vec![ix], &client, priority_fee)?;
 
             // Send the transaction.
-            for retry_transactions in 0..20 {
-                let latest_hash = client.get_latest_blockhash()?;
+            let mut latest_hash = client.get_latest_blockhash()?;
+            for retries in 0..20 {
+                if !client.is_blockhash_valid(&latest_hash, client.commitment())? {
+                    latest_hash = client.get_latest_blockhash()?;
+                }
                 let tx = Transaction::new_signed_with_payer(
                     &instructions,
                     Some(&keypair.pubkey()),
@@ -2343,7 +2355,7 @@ fn idl_set_buffer(
                 match client.send_and_confirm_transaction_with_spinner(&tx) {
                     Ok(_) => break,
                     Err(e) => {
-                        if retry_transactions == 19 {
+                        if retries == 19 {
                             return Err(anyhow!("Error: {e}. Failed to send transaction."));
                         }
                         println!("Error: {e}. Retrying transaction.");
@@ -2591,8 +2603,11 @@ fn idl_write(
         // Send transaction.
         let instructions = prepend_compute_unit_ix(vec![ix], &client, priority_fee)?;
 
-        for retry_transactions in 0..20 {
-            let latest_hash = client.get_latest_blockhash()?;
+        let mut latest_hash = client.get_latest_blockhash()?;
+        for retries in 0..20 {
+            if !client.is_blockhash_valid(&latest_hash, client.commitment())? {
+                latest_hash = client.get_latest_blockhash()?;
+            }
             let tx = Transaction::new_signed_with_payer(
                 &instructions,
                 Some(&keypair.pubkey()),
@@ -2603,7 +2618,7 @@ fn idl_write(
             match client.send_and_confirm_transaction_with_spinner(&tx) {
                 Ok(_) => break,
                 Err(e) => {
-                    if retry_transactions == 19 {
+                    if retries == 19 {
                         return Err(anyhow!("Error: {e}. Failed to send transaction."));
                     }
                     println!("Error: {e}. Retrying transaction.");
@@ -3692,6 +3707,7 @@ fn upgrade(
     cfg_override: &ConfigOverride,
     program_id: Pubkey,
     program_filepath: String,
+    solana_args: Vec<String>,
 ) -> Result<()> {
     let path: PathBuf = program_filepath.parse().unwrap();
     let program_filepath = path.canonicalize()?.display().to_string();
@@ -3708,6 +3724,7 @@ fn upgrade(
             .arg("--program-id")
             .arg(strip_workspace_prefix(program_id.to_string()))
             .arg(strip_workspace_prefix(program_filepath))
+            .args(&solana_args)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .output()
@@ -3779,16 +3796,31 @@ fn create_idl_account(
                 data,
             });
         }
-        let latest_hash = client.get_latest_blockhash()?;
         instructions = prepend_compute_unit_ix(instructions, &client, priority_fee)?;
 
-        let tx = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&keypair.pubkey()),
-            &[&keypair],
-            latest_hash,
-        );
-        client.send_and_confirm_transaction_with_spinner(&tx)?;
+        let mut latest_hash = client.get_latest_blockhash()?;
+        for retries in 0..20 {
+            if !client.is_blockhash_valid(&latest_hash, client.commitment())? {
+                latest_hash = client.get_latest_blockhash()?;
+            }
+
+            let tx = Transaction::new_signed_with_payer(
+                &instructions,
+                Some(&keypair.pubkey()),
+                &[&keypair],
+                latest_hash,
+            );
+
+            match client.send_and_confirm_transaction_with_spinner(&tx) {
+                Ok(_) => break,
+                Err(err) => {
+                    if retries == 19 {
+                        return Err(anyhow!("Error creating IDL account: {}", err));
+                    }
+                    println!("Error creating IDL account: {}. Retrying...", err);
+                }
+            }
+        }
     }
 
     // Write directly to the IDL account buffer.
@@ -3851,8 +3883,11 @@ fn create_idl_buffer(
         priority_fee,
     )?;
 
-    for retries in 0..5 {
-        let latest_hash = client.get_latest_blockhash()?;
+    let mut latest_hash = client.get_latest_blockhash()?;
+    for retries in 0..20 {
+        if !client.is_blockhash_valid(&latest_hash, client.commitment())? {
+            latest_hash = client.get_latest_blockhash()?;
+        }
         let tx = Transaction::new_signed_with_payer(
             &instructions,
             Some(&keypair.pubkey()),
@@ -3862,7 +3897,7 @@ fn create_idl_buffer(
         match client.send_and_confirm_transaction_with_spinner(&tx) {
             Ok(_) => break,
             Err(err) => {
-                if retries == 4 {
+                if retries == 19 {
                     return Err(anyhow!("Error creating buffer account: {}", err));
                 }
                 println!("Error creating buffer account: {}. Retrying...", err);
@@ -4517,7 +4552,8 @@ fn get_recommended_micro_lamport_fee(client: &RpcClient, priority_fee: Option<u6
 
     Ok(median_priority_fee)
 }
-
+/// Prepend a compute unit ix, if the priority fee is greater than 0.
+/// This helps to improve the chances that the transaction will land.
 fn prepend_compute_unit_ix(
     instructions: Vec<Instruction>,
     client: &RpcClient,
