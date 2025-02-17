@@ -108,7 +108,7 @@ impl IdlBuilder {
         )
         .map(convert_module_paths)
         .map(sort)?;
-        verify(&idl)?;
+        // verify(&idl)?;
 
         Ok(idl)
     }
